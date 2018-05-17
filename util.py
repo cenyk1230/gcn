@@ -170,19 +170,21 @@ class S2VGraph(object):
 
         if self.num_nodes < k:
             delta = k - self.num_nodes
+            self.g.add_nodes_from(list(range(self.num_nodes, k)))
             self.num_nodes = k
             self.node_features = np.concatenate([self.node_features, np.zeros((delta, self.node_features.shape[1]))], axis=0)
+            self.adj = nx.adjacency_matrix(self.g)
+            # self.adj = preprocess_adj(self.adj)
             # self.adj = (self.adj[0], self.adj[1], (k, k))
-            self.adj = preprocess_adj(self.adj)
-            self.adj = (self.adj[0], self.adj[1], (k, k))
-        elif self.num_nodes > k:
-            suf = list(range(self.num_nodes))
-            random.shuffle(suf)
-            self.node_features = self.node_features[suf[:k], :]
-            self.adj = self.adj[suf[:k], :][:, suf[:k]]
-            self.adj = preprocess_adj(self.adj)
-        else:
-            self.adj = preprocess_adj(self.adj)
+        # elif self.num_nodes >= k:
+        suf = list(range(self.num_nodes))
+        # random.shuffle(suf)
+        suf.sort(key=lambda x:self.g.degree[x], reverse=True)
+        self.node_features = self.node_features[suf[:k], :]
+        self.adj = self.adj[suf[:k], :][:, suf[:k]]
+        self.adj = preprocess_adj(self.adj)
+        # else:
+        #     self.adj = preprocess_adj(self.adj)
         
 
 def load_data():

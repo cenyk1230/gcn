@@ -151,25 +151,25 @@ class GraphConvolution(Layer):
         adjs, x = inputs
 
         # convolve
-        # output = []
-        # for i in range(len(adjs)):
-        #     # tmp_x = tf.gather(x[i], adjs[i])
-        #     # tmp_x = tf.reshape(tmp_x, [-1, self.input_dim * self.field_size])
-        #     if self.dropout > 0:
-        #         x[i] = tf.nn.dropout(x[i], 1 - self.dropout, seed=cmd_args.seed)
-        #         # tmp_x = tf.nn.dropout(tmp_x, 1 - self.dropout, seed=cmd_args.seed)
-        #     tmp = dot(adjs[i], dot(x[i], self.vars['weights']), sparse=self.sparse_inputs)
-        #     # tmp = dot(tmp_x, self.vars['weights'])
-        #     if self.bias:
-        #         tmp += self.vars['bias']
-        #     tmp = self.act(tmp)
-        #     output.append(tmp)
+        output = []
+        for i in range(len(adjs)):
+            # tmp_x = tf.gather(x[i], adjs[i])
+            # tmp_x = tf.reshape(tmp_x, [-1, self.input_dim * self.field_size])
+            if self.dropout > 0:
+                x[i] = tf.nn.dropout(x[i], 1 - self.dropout, seed=cmd_args.seed)
+                # tmp_x = tf.nn.dropout(tmp_x, 1 - self.dropout, seed=cmd_args.seed)
+            tmp = dot(adjs[i], dot(x[i], self.vars['weights']), sparse=self.sparse_inputs)
+            # tmp = dot(tmp_x, self.vars['weights'])
+            if self.bias:
+                tmp += self.vars['bias']
+            tmp = self.act(tmp)
+            output.append(tmp)
 
-        if self.dropout > 0:
-            x = tf.nn.dropout(x, 1 - self.dropout, seed=cmd_args.seed)
-        tmp = dot(adjs, x)
-        tmp = tf.reshape(tmp, [-1, self.input_dim])
-        tmp = dot(tmp, self.vars['weights'])
-        tmp = tf.reshape(tmp, [-1, self.k, self.output_dim])
+        # if self.dropout > 0:
+        #     x = tf.nn.dropout(x, 1 - self.dropout, seed=cmd_args.seed)
+        # tmp = dot(adjs, x)
+        # tmp = tf.reshape(tmp, [-1, self.input_dim])
+        # tmp = dot(tmp, self.vars['weights'])
+        # tmp = tf.reshape(tmp, [-1, self.k, self.output_dim])
 
-        return tmp
+        return output

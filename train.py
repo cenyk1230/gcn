@@ -69,11 +69,11 @@ field_size = cmd_args.field_size
 tf_graph = tf.Graph()
 
 with tf_graph.as_default():
-    # adjs = [tf.sparse_placeholder(tf.float32, shape=[None, None]) for _ in range(batch_size)]
+    adjs = [tf.sparse_placeholder(tf.float32, shape=[None, None]) for _ in range(batch_size)]
     # adjs = [tf.placeholder(tf.int32, shape=[None, field_size]) for _ in range(batch_size)]
-    # features = [tf.placeholder(tf.float32, shape=[None, feat_dim]) for _ in range(batch_size)]
-    adjs = tf.placeholder(tf.float32, shape=[batch_size, k, k])
-    features = tf.placeholder(tf.float32, shape=[batch_size, k, feat_dim])
+    features = [tf.placeholder(tf.float32, shape=[None, feat_dim]) for _ in range(batch_size)]
+    # adjs = tf.placeholder(tf.float32, shape=[batch_size, k, k])
+    # features = tf.placeholder(tf.float32, shape=[batch_size, k, feat_dim])
     labels = tf.placeholder(tf.int32, shape=[batch_size, num_class], name='labels')
     mask = tf.placeholder(tf.bool, shape=[batch_size])
 
@@ -107,7 +107,7 @@ with tf_graph.as_default():
     b_pool = zeros((dim_p))
 
     # latent_dim*3+1   dim_u*2
-    Conv1 = tf.layers.Conv1D(filters=32, kernel_size=1, strides=1, padding='same', activation=tf.nn.relu)
+    Conv1 = tf.layers.Conv1D(filters=16, kernel_size=1, strides=1, padding='same', activation=tf.nn.relu)
     Maxp1 = tf.layers.MaxPooling1D(pool_size=2, strides=2, padding='same')
     Conv2 = tf.layers.Conv1D(filters=32, kernel_size=4, padding='same', activation=tf.nn.relu)
 
@@ -158,8 +158,8 @@ with tf_graph.as_default():
         X_gc.append(tf.concat([X_gc1[i], X_gc2[i], X_gc3[i], X_gc4[i]], axis=1))
         # X_gc.append(tf.concat([X_gc1[i], X_gc2[i], X_gc3[i]], axis=1))
 
-    X_n = []
-    for i in range(batch_size):
+    # X_n = []
+    # for i in range(batch_size):
         # tmp1 = tf.reshape(tf.slice(X[i], [0, 0], [k, 16]), [-1])
         # tmp2 = tf.reduce_mean(X[i], axis=0)
         # tmp3 = tf.reduce_min(X[i], axis=0)
@@ -169,18 +169,18 @@ with tf_graph.as_default():
 
         # X_n.append(tf.slice(X_gc[i], [0, 0], [k, latent_dim*3+1]))
         
-        indices = tf.nn.top_k(tf.reshape(X_gc4[i], [-1]), k).indices
-        X_topk = tf.gather(X_gc[i], indices)
+        # indices = tf.nn.top_k(tf.reshape(X_gc4[i], [-1]), k).indices
+        # X_topk = tf.gather(X_gc[i], indices)
         
         # X_n.append(tf.reshape(X_topk, [-1]))
-        X_n.append(X_topk)
+        # X_n.append(X_topk)
 
         # X_pool = tf.reduce_max(tf.nn.relu(tf.matmul(X_gc[i], W_pool) + b_pool), axis=0)
 
         # X_n.append(tf.concat([X_pool, tf.reduce_max(X_gc[i], axis=0)], axis=0))
         # X_n.append(X_pool)
 
-    X_lstm = tf.stack(X_n)
+    # X_lstm = tf.stack(X_n)
     # X_n = X_lstm
 
     # X_lstm = Conv1(X_lstm)
@@ -192,21 +192,21 @@ with tf_graph.as_default():
 
     # print(len(H), H[0].shape)
 
-    H = LSTM_layer(X_lstm)
+    # H = LSTM_layer(X_lstm)
 
     # H = tf.reshape(tf.transpose(tf.stack(H), [1, 0, 2]), [batch_size, -1])
 
     # X_n = tf.expand_dims(tf.stack(X_n), -1)
     # X_n = tf.expand_dims(H, -1)
 
-    # X_n = tf.stack(X_n)
-    # X_n = Conv1(X_n)
-    # X_n = Maxp1(X_n)
-    # X_n = Conv2(X_n)
-    X_n = H
+    X_n = tf.stack(X_gc)
+    X_n = Conv1(X_n)
+    X_n = Maxp1(X_n)
+    X_n = Conv2(X_n)
+    # X_n = H
     
     # (k+1)//2 * 32
-    outputs = tf.reshape(X_n, [batch_size, -1])
+    outputs = tf.reshape(X_n, [batch_size, (k+1)//2 * 32])
 
     outputs = Dense1(outputs)
     outputs = Dropout1(outputs)
@@ -258,10 +258,10 @@ def evaluate(graphs):
             tmp_label[i, y[i]] = 1
 
         feed = {labels: tmp_label}
-        # feed.update({adjs[i]: s[i] for i in range(len(s))})
-        # feed.update({features[i]: x[i] for i in range(len(x))})
-        feed.update({adjs: generate_adjs(s)})
-        feed.update({features: x})
+        feed.update({adjs[i]: s[i] for i in range(len(s))})
+        feed.update({features[i]: x[i] for i in range(len(x))})
+        # feed.update({adjs: generate_adjs(s)})
+        # feed.update({features: x})
         # feed.update({sizes[i]: len(s[i]) for i in range(len(s))})
         feed.update({mask: m})
         feed.update({tf.keras.backend.learning_phase(): 0})
@@ -301,10 +301,10 @@ with tf.Session(graph=tf_graph) as sess:
                 tmp_label[i, y[i]] = 1
 
             feed = {labels: tmp_label}
-            # feed.update({adjs[i]: s[i] for i in range(len(s))})
-            # feed.update({features[i]: x[i] for i in range(len(x))})
-            feed.update({adjs: generate_adjs(s)})
-            feed.update({features: x})
+            feed.update({adjs[i]: s[i] for i in range(len(s))})
+            feed.update({features[i]: x[i] for i in range(len(x))})
+            # feed.update({adjs: generate_adjs(s)})
+            # feed.update({features: x})
             # feed.update({sizes[i]: len(s[i]) for i in range(len(s))})
             feed.update({mask: m})
             feed.update({tf.keras.backend.learning_phase(): 1})

@@ -43,7 +43,7 @@ PTC)
   ;;
 PROTEINS)
   bsize=50
-  num_epochs=200
+  num_epochs=100
   learning_rate=0.0001
   ;;
 COLLAB)
