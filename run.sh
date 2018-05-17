@@ -9,24 +9,18 @@ gpu=${4-3}   # gpu number
 # general settings
 slice_k=0.6  # If k <= 1, then k is set to an integer so that k% of graphs have nodes less than this integer
 bsize=50  # batch size
+use_deg=0
 
 # dataset-specific settings
 case ${DATA} in
 MUTAG)
   bsize=20
-  num_epochs=200
-  learning_rate=0.0001
-  ;;
-ENZYMES)
-  num_epochs=500
+  use_deg=1
+  num_epochs=100
   learning_rate=0.0001
   ;;
 NCI1)
   bsize=100
-  num_epochs=200
-  learning_rate=0.0001
-  ;;
-NCI109)
   num_epochs=200
   learning_rate=0.0001
   ;;
@@ -36,8 +30,10 @@ DD)
   learning_rate=0.0001
   ;;
 PTC)
-  bsize=20
-  num_epochs=200
+  slice_k=0.6
+  bsize=50
+  use_deg=1
+  num_epochs=50
   learning_rate=0.0001
   ;;
 PROTEINS)
@@ -46,19 +42,20 @@ PROTEINS)
   learning_rate=0.0001
   ;;
 COLLAB)
-  num_epochs=300
+  use_deg=1
+  num_epochs=100
   learning_rate=0.0001
-  sortpooling_k=0.9
+  slice_k=0.9
   ;;
 IMDBBINARY)
   num_epochs=300
   learning_rate=0.0001
-  sortpooling_k=0.9
+  slice_k=0.9
   ;;
 IMDBMULTI)
   num_epochs=100
   learning_rate=0.0001
-  sortpooling_k=0.9
+  slice_k=0.9
   ;;
 esac
 
@@ -73,11 +70,12 @@ if [ ${fold} == 0 ]; then
         -seed $seed \
         -data $DATA \
         -fold $i \
-        -gpu $gpu \
+        -use_deg $use_deg \
         -learning_rate $learning_rate \
         -num_epochs $num_epochs \
         -slice_k $slice_k \
-        -batch_size $bsize
+        -batch_size $bsize \
+        -gpu $gpu
   done
   stop=`date +%s`
   echo "End of cross-validation"
@@ -91,9 +89,10 @@ else
       -seed $seed \
       -data $DATA \
       -fold $fold \
-      -gpu $gpu \
+      -use_deg $use_deg \
       -learning_rate $learning_rate \
       -num_epochs $num_epochs \
       -slice_k $slice_k \
-      -batch_size $bsize
+      -batch_size $bsize \
+      -gpu $gpu
 fi
