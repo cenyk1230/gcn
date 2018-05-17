@@ -135,21 +135,21 @@ class S2VGraph(object):
         else:
             self.node_features = np.concatenate([tags, node_features], axis=1)
 
-        if self.num_nodes < k:
-            delta = k - self.num_nodes
-            self.g.add_nodes_from(list(range(self.num_nodes, k)))
-            self.num_nodes = k
-            self.node_features = np.concatenate([self.node_features, np.zeros((delta, cmd_args.feat_dim))], axis=0)
-            self.adj = sp.csr_matrix((self.adj.data, self.adj.indices, list(self.adj.indptr) + [len(self.adj.data)] * delta), shape=(k, k))
+        # if self.num_nodes < k:
+        #     delta = k - self.num_nodes
+        #     self.g.add_nodes_from(list(range(self.num_nodes, k)))
+        #     self.num_nodes = k
+        #     self.node_features = np.concatenate([self.node_features, np.zeros((delta, cmd_args.feat_dim))], axis=0)
+        #     self.adj = sp.csr_matrix((self.adj.data, self.adj.indices, list(self.adj.indptr) + [len(self.adj.data)] * delta), shape=(k, k))
 
-        if self.num_nodes > k:
-            suf = list(range(self.num_nodes))
-            random.shuffle(suf)
-            self.node_features = self.node_features[suf[:k], :]
-            self.num_nodes = k
-            self.g = self.g.subgraph(suf[:k])
-            self.g = nx.relabel_nodes(self.g, dict(zip(self.g.nodes(), list(range(k)))))
-            self.adj = nx.adjacency_matrix(self.g)
+        # if self.num_nodes > k:
+        #     suf = list(range(self.num_nodes))
+        #     random.shuffle(suf)
+        #     self.node_features = self.node_features[suf[:k], :]
+        #     self.num_nodes = k
+        #     self.g = self.g.subgraph(suf[:k])
+        #     self.g = nx.relabel_nodes(self.g, dict(zip(self.g.nodes(), list(range(k)))))
+        #     self.adj = nx.adjacency_matrix(self.g)
 
         if cmd_args.use_deg == 1:
             degs = [[self.g.degree[i]] for i in range(self.num_nodes)]
@@ -157,32 +157,32 @@ class S2VGraph(object):
             degs = encoder_deg.fit_transform(degs).toarray()
             self.node_features = np.concatenate([self.node_features, degs], axis=1)
 
-        tmp = []
-        for i in range(self.num_nodes):
-            # tmp_adj = self.adj[i].indices
-            # if len(tmp_adj) < cmd_args.field_size:
-            #     tmp.append([i] * (cmd_args.field_size - len(tmp_adj)) + list(tmp_adj))
-            # else:
-            #     tmp.append([i] + list(np.random.choice(tmp_adj, cmd_args.field_size - 1)))
-            tmp.append(self.receptive_field(i, cmd_args.field_size))
+        # tmp = []
+        # for i in range(self.num_nodes):
+        #     # tmp_adj = self.adj[i].indices
+        #     # if len(tmp_adj) < cmd_args.field_size:
+        #     #     tmp.append([i] * (cmd_args.field_size - len(tmp_adj)) + list(tmp_adj))
+        #     # else:
+        #     #     tmp.append([i] + list(np.random.choice(tmp_adj, cmd_args.field_size - 1)))
+        #     tmp.append(self.receptive_field(i, cmd_args.field_size))
 
-        self.adj = np.array(tmp)
+        # self.adj = np.array(tmp)
 
-        # if self.num_nodes < k:
-        #     delta = k - self.num_nodes
-        #     self.num_nodes = k
-        #     self.node_features = np.concatenate([self.node_features, np.zeros((delta, cmd_args.feat_dim))], axis=0)
-        #     # self.adj = (self.adj[0], self.adj[1], (k, k))
-        #     self.adj = preprocess_adj(self.adj)
-        #     self.adj = (self.adj[0], self.adj[1], (k, k))
-        # elif self.num_nodes > k:
-        #     suf = list(range(self.num_nodes))
-        #     random.shuffle(suf)
-        #     self.node_features = self.node_features[suf[:k], :]
-        #     self.adj = self.adj[suf[:k], :][:, suf[:k]]
-        #     self.adj = preprocess_adj(self.adj)
-        # else:
-        #     self.adj = preprocess_adj(self.adj)
+        if self.num_nodes < k:
+            delta = k - self.num_nodes
+            self.num_nodes = k
+            self.node_features = np.concatenate([self.node_features, np.zeros((delta, self.node_features.shape[1]))], axis=0)
+            # self.adj = (self.adj[0], self.adj[1], (k, k))
+            self.adj = preprocess_adj(self.adj)
+            self.adj = (self.adj[0], self.adj[1], (k, k))
+        elif self.num_nodes > k:
+            suf = list(range(self.num_nodes))
+            random.shuffle(suf)
+            self.node_features = self.node_features[suf[:k], :]
+            self.adj = self.adj[suf[:k], :][:, suf[:k]]
+            self.adj = preprocess_adj(self.adj)
+        else:
+            self.adj = preprocess_adj(self.adj)
         
 
 def load_data():

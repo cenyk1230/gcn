@@ -125,7 +125,7 @@ class Dense(Layer):
 
 class GraphConvolution(Layer):
     """Graph convolution layer."""
-    def __init__(self, input_dim, output_dim, field_size, dropout=0., sparse_inputs=False,
+    def __init__(self, input_dim, output_dim, k, dropout=0., sparse_inputs=False,
                  act=tf.nn.relu, bias=False, **kwargs):
         super(GraphConvolution, self).__init__(**kwargs)
 
@@ -133,12 +133,13 @@ class GraphConvolution(Layer):
         self.sparse_inputs = sparse_inputs
         self.act = act
         self.bias = bias
-        self.field_size = field_size
+        self.k = k
+        # self.field_size = field_size
         self.input_dim = input_dim
         self.output_dim = output_dim
 
         with tf.variable_scope(self.name + '_vars'):
-            self.vars['weights'] = glorot([input_dim * field_size, output_dim],
+            self.vars['weights'] = glorot([input_dim, output_dim],
                                       name='weights')
             if self.bias:
                 self.vars['bias'] = zeros([output_dim], name='bias')
@@ -150,18 +151,25 @@ class GraphConvolution(Layer):
         adjs, x = inputs
 
         # convolve
-        output = []
-        for i in range(len(adjs)):
-            tmp_x = tf.gather(x[i], adjs[i])
-            tmp_x = tf.reshape(tmp_x, [-1, self.input_dim * self.field_size])
-            if self.dropout > 0:
-                # x[i] = tf.nn.dropout(x[i], 1 - self.dropout, seed=cmd_args.seed)
-                tmp_x = tf.nn.dropout(tmp_x, 1 - self.dropout, seed=cmd_args.seed)
-            # tmp = dot(adjs[i], dot(x[i], self.vars['weights']), sparse=self.sparse_inputs)
-            tmp = dot(tmp_x, self.vars['weights'])
-            if self.bias:
-                tmp += self.vars['bias']
-            tmp = self.act(tmp)
-            output.append(tmp)
+        # output = []
+        # for i in range(len(adjs)):
+        #     # tmp_x = tf.gather(x[i], adjs[i])
+        #     # tmp_x = tf.reshape(tmp_x, [-1, self.input_dim * self.field_size])
+        #     if self.dropout > 0:
+        #         x[i] = tf.nn.dropout(x[i], 1 - self.dropout, seed=cmd_args.seed)
+        #         # tmp_x = tf.nn.dropout(tmp_x, 1 - self.dropout, seed=cmd_args.seed)
+        #     tmp = dot(adjs[i], dot(x[i], self.vars['weights']), sparse=self.sparse_inputs)
+        #     # tmp = dot(tmp_x, self.vars['weights'])
+        #     if self.bias:
+        #         tmp += self.vars['bias']
+        #     tmp = self.act(tmp)
+        #     output.append(tmp)
 
-        return output
+        if self.dropout > 0:
+            x = tf.nn.dropout(x, 1 - self.dropout, seed=cmd_args.seed)
+        tmp = dot(adjs, x)
+        tmp = tf.reshape(tmp, [-1, self.input_dim])
+        tmp = dot(tmp, self.vars['weights'])
+        tmp = tf.reshape(tmp, [-1, self.k, self.output_dim])
+
+        return tmp

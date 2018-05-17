@@ -40,7 +40,6 @@ def get_batches(graphs, batch_size):
             s.append(graphs[index].adj)
         yield x, y, s, m
 
-
 train_graphs, test_graphs = load_data()
 
 print('# train: %d, # test: %d' % (len(train_graphs), len(test_graphs)))
@@ -71,20 +70,21 @@ tf_graph = tf.Graph()
 
 with tf_graph.as_default():
     # adjs = [tf.sparse_placeholder(tf.float32, shape=[None, None]) for _ in range(batch_size)]
-    adjs = [tf.placeholder(tf.int32, shape=[None, field_size]) for _ in range(batch_size)]
-    features = [tf.placeholder(tf.float32, shape=[None, feat_dim]) for _ in range(batch_size)]
-    # sizes = [tf.placeholder(tf.int32, shape=[None]) for _ in range(batch_size)]
-    labels = tf.placeholder(tf.int32, shape=[None, num_class], name='labels')
+    # adjs = [tf.placeholder(tf.int32, shape=[None, field_size]) for _ in range(batch_size)]
+    # features = [tf.placeholder(tf.float32, shape=[None, feat_dim]) for _ in range(batch_size)]
+    adjs = tf.placeholder(tf.float32, shape=[batch_size, k, k])
+    features = tf.placeholder(tf.float32, shape=[batch_size, k, feat_dim])
+    labels = tf.placeholder(tf.int32, shape=[batch_size, num_class], name='labels')
     mask = tf.placeholder(tf.bool, shape=[batch_size])
 
 with tf_graph.as_default():
 
     gc_layers = []
 
-    GC1 = GraphConvolution(input_dim=feat_dim, output_dim=latent_dim, field_size=field_size, dropout=0.0, sparse_inputs=True, act=tf.nn.relu, bias=True)
-    GC2 = GraphConvolution(input_dim=latent_dim, output_dim=latent_dim, field_size=field_size, dropout=0.0, sparse_inputs=True, act=tf.nn.relu, bias=True)
-    GC3 = GraphConvolution(input_dim=latent_dim, output_dim=latent_dim, field_size=field_size, dropout=0.0, sparse_inputs=True, act=tf.nn.relu, bias=True)
-    GC4 = GraphConvolution(input_dim=latent_dim, output_dim=1, field_size=field_size, dropout=0.0, sparse_inputs=True, act=tf.nn.relu, bias=True)
+    GC1 = GraphConvolution(input_dim=feat_dim, output_dim=latent_dim, k=k, dropout=0.0, sparse_inputs=True, act=tf.nn.relu, bias=True)
+    GC2 = GraphConvolution(input_dim=latent_dim, output_dim=latent_dim, k=k, dropout=0.0, sparse_inputs=True, act=tf.nn.relu, bias=True)
+    GC3 = GraphConvolution(input_dim=latent_dim, output_dim=latent_dim, k=k, dropout=0.0, sparse_inputs=True, act=tf.nn.relu, bias=True)
+    GC4 = GraphConvolution(input_dim=latent_dim, output_dim=1, k=k, dropout=0.0, sparse_inputs=True, act=tf.nn.relu, bias=True)
 
     # GC1 = GraphConvolution(input_dim=12, output_dim=8, act=tf.nn.relu, bias=False)
     # GC2 = GraphConvolution(input_dim=8, output_dim=2, act=lambda x:x, bias=False)
@@ -234,6 +234,20 @@ with tf_graph.as_default():
     # optimizer = tf.train.GradientDescentOptimizer(learning_rate=cmd_args.learning_rate).minimize(cost)
 
 
+def generate_adjs(s):
+    ret = np.zeros((batch_size, k, k))
+    indices = []
+    values = []
+    shape = (batch_size, k, k)
+    for i in range(len(s)):
+        coords, v, _ = s[i]
+        for j in range(len(coords)):
+            indices.append((i, coords[j][0], coords[j][1]))
+            values.append(v[j])
+            ret[i, coords[j][0], coords[j][1]] = 1.0
+    # return (indices, values, shape)
+    return ret
+
 def evaluate(graphs):
     batches = get_batches(graphs, batch_size)
     loss = []
@@ -244,8 +258,10 @@ def evaluate(graphs):
             tmp_label[i, y[i]] = 1
 
         feed = {labels: tmp_label}
-        feed.update({adjs[i]: s[i] for i in range(len(s))})
-        feed.update({features[i]: x[i] for i in range(len(x))})
+        # feed.update({adjs[i]: s[i] for i in range(len(s))})
+        # feed.update({features[i]: x[i] for i in range(len(x))})
+        feed.update({adjs: generate_adjs(s)})
+        feed.update({features: x})
         # feed.update({sizes[i]: len(s[i]) for i in range(len(s))})
         feed.update({mask: m})
         feed.update({tf.keras.backend.learning_phase(): 0})
@@ -285,8 +301,10 @@ with tf.Session(graph=tf_graph) as sess:
                 tmp_label[i, y[i]] = 1
 
             feed = {labels: tmp_label}
-            feed.update({adjs[i]: s[i] for i in range(len(s))})
-            feed.update({features[i]: x[i] for i in range(len(x))})
+            # feed.update({adjs[i]: s[i] for i in range(len(s))})
+            # feed.update({features[i]: x[i] for i in range(len(x))})
+            feed.update({adjs: generate_adjs(s)})
+            feed.update({features: x})
             # feed.update({sizes[i]: len(s[i]) for i in range(len(s))})
             feed.update({mask: m})
             feed.update({tf.keras.backend.learning_phase(): 1})
