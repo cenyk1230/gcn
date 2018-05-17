@@ -4,12 +4,11 @@
 DATA="${1-MUTAG}"  # MUTAG, ENZYMES, NCI1, NCI109, DD, PTC, PROTEINS, COLLAB, IMDBBINARY, IMDBMULTI
 fold=${2-1}  # which fold as testing data
 seed=${3-1}  # random seed
+gpu=${4-3}   # gpu number
 
 # general settings
-gpu_or_cpu=cpu
 slice_k=0.6  # If k <= 1, then k is set to an integer so that k% of graphs have nodes less than this integer
-bsize=10  # batch size
-dropout=False
+bsize=50  # batch size
 
 # dataset-specific settings
 case ${DATA} in
@@ -24,7 +23,7 @@ ENZYMES)
   ;;
 NCI1)
   bsize=100
-  num_epochs=500
+  num_epochs=200
   learning_rate=0.0001
   ;;
 NCI109)
@@ -74,12 +73,11 @@ if [ ${fold} == 0 ]; then
         -seed $seed \
         -data $DATA \
         -fold $i \
+        -gpu $gpu \
         -learning_rate $learning_rate \
         -num_epochs $num_epochs \
         -slice_k $slice_k \
-        -batch_size $bsize \
-        -mode $gpu_or_cpu \
-        -dropout $dropout
+        -batch_size $bsize
   done
   stop=`date +%s`
   echo "End of cross-validation"
@@ -93,10 +91,9 @@ else
       -seed $seed \
       -data $DATA \
       -fold $fold \
+      -gpu $gpu \
       -learning_rate $learning_rate \
       -num_epochs $num_epochs \
       -slice_k $slice_k \
-      -batch_size $bsize \
-      -mode $gpu_or_cpu \
-      -dropout $dropout
+      -batch_size $bsize
 fi
