@@ -126,6 +126,43 @@ class S2VGraph(object):
 
         return [fields[i][0] for i in range(k)]
 
+    # def preprocessing_1(self, k):
+    #     if self.num_nodes < k:
+    #         delta = k - self.num_nodes
+    #         # self.g.add_nodes_from(list(range(self.num_nodes, k)))
+    #         for i in range(self.num_nodes, k):
+    #             self.g.add_node(i)
+    #             tags = {}
+    #             for j in range(i):
+    #                 if random.random() > float(self.g.degree[j]) / i:
+    #                     self.g.add_edge(j, i)
+    #                     if self.node_tags[j] not in tags:
+    #                         tags[self.node_tags[j]] = 0
+    #                     tags[self.node_tags[j]] += 1
+    #             tags = tags.items()
+    #             tags = [(y, x) for (x, y) in tags]
+    #             if len(tags) > 0:
+    #                 (num, t) = max(tags)
+    #             else:
+    #                 t = np.random.choice(cmd_args.feat_dim, 1)[0]
+    #             self.node_tags.append(t)
+    #         self.num_nodes = k
+    #         # self.node_features = np.concatenate([self.node_features, np.zeros((delta, cmd_args.feat_dim))], axis=0)
+    #         # self.adj = sp.csr_matrix((self.adj.data, self.adj.indices, list(self.adj.indptr) + [len(self.adj.data)] * delta), shape=(k, k))
+    #         self.adj = nx.adjacency_matrix(self.g)
+    #     elif self.num_nodes > k:
+    #         for _ in range(self.num_nodes - k):
+    #             degs = dict(self.g.degree).items()
+    #             degs = [(y, x) for (x, y) in degs]
+    #             (deg, node) = min(degs)
+    #             self.g.remove_node(node)
+
+    #         self.num_nodes = k
+    #         nodes = self.g.nodes()
+    #         # self.node_features = self.node_features[nodes, :]
+    #         self.g = nx.relabel_nodes(self.g, dict(zip(nodes, list(range(k)))))
+    #         self.adj = nx.adjacency_matrix(self.g)
+
     def preprocessing(self, k, max_d):
         encoder = OneHotEncoder(cmd_args.feat_dim)
         tags = [[x] for x in self.node_tags]
@@ -176,15 +213,31 @@ class S2VGraph(object):
             self.adj = nx.adjacency_matrix(self.g)
             # self.adj = preprocess_adj(self.adj)
             # self.adj = (self.adj[0], self.adj[1], (k, k))
-        # elif self.num_nodes >= k:
+        # elif self.num_nodes > k:
+        #     for _ in range(self.num_nodes - k):
+        #         degs = dict(self.g.degree).items()
+        #         degs = [(y, x) for (x, y) in degs]
+        #         (deg, node) = min(degs)
+        #         self.g.remove_node(node)
+
+        #     self.num_nodes = k
+        #     nodes = self.g.nodes()
+        #     self.node_features = self.node_features[nodes, :]
+        #     self.g = nx.relabel_nodes(self.g, dict(zip(nodes, list(range(k)))))
+        #     self.adj = nx.adjacency_matrix(self.g)
+
         suf = list(range(self.num_nodes))
         # random.shuffle(suf)
         suf.sort(key=lambda x:self.g.degree[x], reverse=True)
-        self.node_features = self.node_features[suf[:k], :]
-        self.adj = self.adj[suf[:k], :][:, suf[:k]]
+        self.node_features = self.node_features[suf, :]
+        self.g = nx.relabel_nodes(self.g, dict(zip(suf, list(range(self.num_nodes)))))
+        self.adj = nx.adjacency_matrix(self.g)
+        # self.node_features = self.node_features[suf[:k], :]
+        # self.adj = self.adj[suf[:k], :][:, suf[:k]]
+
         self.adj = preprocess_adj(self.adj)
-        # else:
-        #     self.adj = preprocess_adj(self.adj)
+
+        assert len(self.node_features) == len(self.g)
         
 
 def load_data():
@@ -232,6 +285,9 @@ def load_data():
         num_nodes_list = sorted([g.num_nodes for g in g_list])
         cmd_args.slice_k = num_nodes_list[int(math.ceil(cmd_args.slice_k * len(num_nodes_list))) - 1]
         print('k used in Slicing is: ' + str(cmd_args.slice_k))
+
+    # for g in g_list:
+    #     g.preprocessing_1(cmd_args.slice_k)
 
     max_d = 0
     for g in g_list:
