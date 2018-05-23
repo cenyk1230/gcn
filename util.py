@@ -226,18 +226,27 @@ class S2VGraph(object):
         #     self.g = nx.relabel_nodes(self.g, dict(zip(nodes, list(range(k)))))
         #     self.adj = nx.adjacency_matrix(self.g)
 
+        closeness = nx.algorithms.centrality.closeness_centrality(self.g)
+        betweenness = nx.algorithms.centrality.betweenness_centrality(self.g)
+
+
         suf = list(range(self.num_nodes))
+        imp = []
+        for i in range(self.num_nodes):
+            imp.append((self.g.degree[i], closeness[i], betweenness[i]))
         # random.shuffle(suf)
-        suf.sort(key=lambda x:self.g.degree[x], reverse=True)
-        self.node_features = self.node_features[suf, :]
-        self.g = nx.relabel_nodes(self.g, dict(zip(suf, list(range(self.num_nodes)))))
-        self.adj = nx.adjacency_matrix(self.g)
-        # self.node_features = self.node_features[suf[:k], :]
-        # self.adj = self.adj[suf[:k], :][:, suf[:k]]
+        # closeness = nx.algorithms.centrality.closeness_centrality(self.g)
+        suf.sort(key=lambda x:imp[x], reverse=True)
+        # suf.sort(key=lambda x:closeness[x], reverse=True)
+        # self.node_features = self.node_features[suf, :]
+        # self.g = nx.relabel_nodes(self.g, dict(zip(suf, list(range(self.num_nodes)))))
+        # self.adj = nx.adjacency_matrix(self.g)
+        self.node_features = self.node_features[suf[:k], :]
+        self.adj = self.adj[suf[:k], :][:, suf[:k]]
 
         self.adj = preprocess_adj(self.adj)
 
-        assert len(self.node_features) == len(self.g)
+        # assert len(self.node_features) == len(self.g)
         
 
 def load_data():

@@ -84,7 +84,7 @@ with tf_graph.as_default():
     GC1 = GraphConvolution(input_dim=feat_dim, output_dim=latent_dim, k=k, dropout=0.0, sparse_inputs=True, act=tf.nn.relu, bias=True)
     GC2 = GraphConvolution(input_dim=latent_dim, output_dim=latent_dim, k=k, dropout=0.0, sparse_inputs=True, act=tf.nn.relu, bias=True)
     GC3 = GraphConvolution(input_dim=latent_dim, output_dim=latent_dim, k=k, dropout=0.0, sparse_inputs=True, act=tf.nn.relu, bias=True)
-    # GC4 = GraphConvolution(input_dim=latent_dim, output_dim=1, k=k, dropout=0.0, sparse_inputs=True, act=tf.nn.relu, bias=True)
+    GC4 = GraphConvolution(input_dim=latent_dim, output_dim=latent_dim, k=k, dropout=0.0, sparse_inputs=True, act=tf.nn.relu, bias=True)
 
     # GC1 = GraphConvolution(input_dim=12, output_dim=8, act=tf.nn.relu, bias=False)
     # GC2 = GraphConvolution(input_dim=8, output_dim=2, act=lambda x:x, bias=False)
@@ -151,15 +151,16 @@ with tf_graph.as_default():
     X_gc1 = GC1((adjs, features))
     X_gc2 = GC2((adjs, X_gc1))
     X_gc3 = GC3((adjs, X_gc2))
-    # X_gc4 = GC4((adjs, X_gc3))
+    X_gc4 = GC4((adjs, X_gc3))
 
     X_gc = []
     for i in range(batch_size):
-        # X_gc.append(tf.concat([X_gc1[i], X_gc2[i], X_gc3[i], X_gc4[i]], axis=1))
-        X_gc.append(tf.concat([X_gc1[i], X_gc2[i], X_gc3[i]], axis=1))
+        X_gc.append(tf.concat([X_gc1[i], X_gc2[i], X_gc3[i], X_gc4[i]], axis=1))
+        # X_gc.append(tf.concat([X_gc1[i], X_gc2[i], X_gc3[i]], axis=1))
+        # X_gc.append(tf.concat([X_gc1[i], X_gc2[i]], axis=1))
 
-    X_n = []
-    for i in range(batch_size):
+    # X_n = []
+    # for i in range(batch_size):
         # tmp1 = tf.reshape(tf.slice(X[i], [0, 0], [k, 16]), [-1])
         # tmp2 = tf.reduce_mean(X[i], axis=0)
         # tmp3 = tf.reduce_min(X[i], axis=0)
@@ -167,7 +168,7 @@ with tf_graph.as_default():
 
         # tmp = tf.concat([tmp1, tmp2, tmp3, tmp4], axis=0)
 
-        X_n.append(tf.slice(X_gc[i], [0, 0], [k, latent_dim*3]))
+        # X_n.append(tf.slice(X_gc[i], [0, 0], [k, latent_dim*3+1]))
         
         # indices = tf.nn.top_k(tf.reshape(X_gc4[i], [-1]), k).indices
         # X_topk = tf.gather(X_gc[i], indices)
@@ -179,6 +180,7 @@ with tf_graph.as_default():
 
         # X_n.append(tf.concat([X_pool, tf.reduce_max(X_gc[i], axis=0)], axis=0))
         # X_n.append(X_pool)
+        # X_n.append(X_gc[i])
 
     # X_lstm = tf.stack(X_n)
     # X_n = X_lstm
@@ -199,7 +201,7 @@ with tf_graph.as_default():
     # X_n = tf.expand_dims(tf.stack(X_n), -1)
     # X_n = tf.expand_dims(H, -1)
 
-    X_n = tf.stack(X_n)
+    X_n = tf.stack(X_gc)
     X_n = Conv1(X_n)
     X_n = Maxp1(X_n)
     X_n = Conv2(X_n)
