@@ -226,6 +226,7 @@ class S2VGraph(object):
         #     self.g = nx.relabel_nodes(self.g, dict(zip(nodes, list(range(k)))))
         #     self.adj = nx.adjacency_matrix(self.g)
 
+        degree = nx.algorithms.centrality.degree_centrality(self.g)
         closeness = nx.algorithms.centrality.closeness_centrality(self.g)
         betweenness = nx.algorithms.centrality.betweenness_centrality(self.g)
 
@@ -233,7 +234,7 @@ class S2VGraph(object):
         suf = list(range(self.num_nodes))
         imp = []
         for i in range(self.num_nodes):
-            imp.append((self.g.degree[i], closeness[i], betweenness[i]))
+            imp.append((degree[i], closeness[i], betweenness[i]))
         # random.shuffle(suf)
         # closeness = nx.algorithms.centrality.closeness_centrality(self.g)
         suf.sort(key=lambda x:imp[x], reverse=True)

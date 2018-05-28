@@ -208,11 +208,11 @@ with tf_graph.as_default():
     # X_n = H
     
     # (k+1)//2 * 32
-    outputs = tf.reshape(X_n, [batch_size, (k+1)//2 * 32])
+    outputs_conv = tf.reshape(X_n, [batch_size, (k+1)//2 * 32])
 
-    outputs = Dense1(outputs)
-    outputs = Dropout1(outputs)
-    outputs = Dense2(outputs)
+    outputs_hidden = Dense1(outputs_conv)
+    outputs_dropout = Dropout1(outputs_hidden)
+    outputs = Dense2(outputs_dropout)
 
     # for FC in fc_layers:
     #     outputs = FC(outputs)
@@ -274,6 +274,31 @@ def evaluate(graphs):
         accu.extend([cur_accu] * np.sum(m))
 
     return np.mean(loss), np.mean(accu)
+
+def get_hidden(graphs):
+    embeddings = []
+    label_list = []
+    batches = get_batches(graphs, batch_size)
+    for x, y, s, m in batches:
+        tmp_label = np.zeros((len(y), num_class), dtype=np.int32)
+        for i in range(len(y)):
+            tmp_label[i, y[i]] = 1
+
+        feed = {labels: tmp_label}
+        feed.update({adjs[i]: s[i] for i in range(len(s))})
+        feed.update({features[i]: x[i] for i in range(len(x))})
+        feed.update({mask: m})
+        feed.update({tf.keras.backend.learning_phase(): 0})
+
+        hiddens = sess.run([outputs_hidden], feed_dict = feed)
+
+        embeddings.append(np.array(hiddens[0])[m])
+        label_list.append(np.array(y)[m])
+    
+    embeddings = np.concatenate(embeddings, axis=0)
+    label_list = np.concatenate(label_list, axis=0)
+
+    return (embeddings, label_list)
 
 epochs = cmd_args.num_epochs
 
@@ -342,10 +367,17 @@ with tf.Session(graph=tf_graph) as sess:
     with open('result_{}.txt'.format(cmd_args.seed), 'a') as f:
         f.write("{:.4f}\n".format(test_accu))
 
+    embeddings_0, labels_0 = get_hidden(train_graphs)
+    embeddings_1, labels_1 = get_hidden(test_graphs)
+    embeddings = np.concatenate([embeddings_0, embeddings_1], axis=0)
+    label_list = np.concatenate([labels_0, labels_1], axis=0)
+    print(embeddings.shape)
+    np.savetxt('graph_embedding.txt', embeddings, fmt='%.5f')
+    np.savetxt('graph_label.txt', label_list, fmt='%d')
 
 plt.figure(figsize = (8, 5))
-plt.plot(logs[:, 0], logs[:, 1], 'x-', label = 'train_loss', color="blue", linewidth = 1)  
-plt.plot(logs[:, 0], logs[:, 3], 'x-', label = 'test_loss', color="green", linewidth = 1)
+plt.plot(logs[:, 0], logs[:, 1], '-', label = 'training loss', color="blue", linewidth = 1)
+plt.plot(logs[:, 0], logs[:, 3], '-', label = 'testing loss', color="green", linewidth = 1)
 plt.xlabel("Epoch")
 plt.ylabel("Loss")
 plt.title("Loss")
@@ -355,8 +387,8 @@ plt.grid(color = '#95a5a6', linestyle = '-', linewidth = 1, axis = 'y', alpha = 
 plt.savefig("loss.png")
 
 plt.figure(figsize = (8, 5))
-plt.plot(logs[:, 0], logs[:, 2], 'x-', label = 'train_accu', color="blue", linewidth = 1)  
-plt.plot(logs[:, 0], logs[:, 4], 'x-', label = 'test_accu', color="green", linewidth = 1)
+plt.plot(logs[:, 0], logs[:, 2], '-', label = 'training accuracy', color="blue", linewidth = 1)
+plt.plot(logs[:, 0], logs[:, 4], '-', label = 'testing accuracy', color="green", linewidth = 1)
 plt.xlabel("Epoch")
 plt.ylabel("Accuracy")
 plt.title("Accuracy")
