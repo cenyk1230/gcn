@@ -46,6 +46,8 @@ print('# train: %d, # test: %d' % (len(train_graphs), len(test_graphs)))
 
 k = cmd_args.slice_k
 
+h = cmd_args.gc_layers
+
 feat_dim = cmd_args.feat_dim
 
 num_class = cmd_args.num_class
@@ -85,6 +87,7 @@ with tf_graph.as_default():
     GC2 = GraphConvolution(input_dim=latent_dim, output_dim=latent_dim, k=k, dropout=0.0, sparse_inputs=True, act=tf.nn.relu, bias=True)
     GC3 = GraphConvolution(input_dim=latent_dim, output_dim=latent_dim, k=k, dropout=0.0, sparse_inputs=True, act=tf.nn.relu, bias=True)
     GC4 = GraphConvolution(input_dim=latent_dim, output_dim=latent_dim, k=k, dropout=0.0, sparse_inputs=True, act=tf.nn.relu, bias=True)
+    GC5 = GraphConvolution(input_dim=latent_dim, output_dim=latent_dim, k=k, dropout=0.0, sparse_inputs=True, act=tf.nn.relu, bias=True)
 
     # GC1 = GraphConvolution(input_dim=12, output_dim=8, act=tf.nn.relu, bias=False)
     # GC2 = GraphConvolution(input_dim=8, output_dim=2, act=lambda x:x, bias=False)
@@ -95,16 +98,16 @@ with tf_graph.as_default():
     # gc_layers.append(GC4)
     # gc_layers.append(GC5)
 
-    lstm_fw = tf.contrib.rnn.LSTMCell(dim_u)
-    lstm_bw = tf.contrib.rnn.LSTMCell(dim_u)
+    # lstm_fw = tf.contrib.rnn.LSTMCell(dim_u)
+    # lstm_bw = tf.contrib.rnn.LSTMCell(dim_u)
 
-    Ws1 = glorot((dim_a, dim_u * 2))
-    Ws2 = glorot((dim_r, dim_a))
+    # Ws1 = glorot((dim_a, dim_u * 2))
+    # Ws2 = glorot((dim_r, dim_a))
 
-    I = tf.stack([tf.eye(dim_r) for _ in range(batch_size)])
+    # I = tf.stack([tf.eye(dim_r) for _ in range(batch_size)])
 
-    W_pool = glorot((latent_dim*3, dim_p))
-    b_pool = zeros((dim_p))
+    # W_pool = glorot((latent_dim*3, dim_p))
+    # b_pool = zeros((dim_p))
 
     # latent_dim*3+1   dim_u*2
     Conv1 = tf.layers.Conv1D(filters=16, kernel_size=1, strides=1, padding='same', activation=tf.nn.relu)
@@ -149,15 +152,27 @@ with tf_graph.as_default():
     # for GC in gc_layers:
     #     X_gc = GC((adjs, X_gc))
     X_gc1 = GC1((adjs, features))
-    X_gc2 = GC2((adjs, X_gc1))
-    X_gc3 = GC3((adjs, X_gc2))
-    X_gc4 = GC4((adjs, X_gc3))
+    if h >= 2:
+        X_gc2 = GC2((adjs, X_gc1))
+    if h >= 3:
+        X_gc3 = GC3((adjs, X_gc2))
+    if h >= 4:
+        X_gc4 = GC4((adjs, X_gc3))
+    if h >= 5:
+        X_gc5 = GC5((adjs, X_gc4))
 
     X_gc = []
     for i in range(batch_size):
-        X_gc.append(tf.concat([X_gc1[i], X_gc2[i], X_gc3[i], X_gc4[i]], axis=1))
-        # X_gc.append(tf.concat([X_gc1[i], X_gc2[i], X_gc3[i]], axis=1))
-        # X_gc.append(tf.concat([X_gc1[i], X_gc2[i]], axis=1))
+        if h == 5:
+            X_gc.append(tf.concat([X_gc1[i], X_gc2[i], X_gc3[i], X_gc4[i], X_gc5[i]], axis=1))
+        elif h == 4:
+            X_gc.append(tf.concat([X_gc1[i], X_gc2[i], X_gc3[i], X_gc4[i]], axis=1))
+        elif h == 3:
+            X_gc.append(tf.concat([X_gc1[i], X_gc2[i], X_gc3[i]], axis=1))
+        elif h == 2:
+            X_gc.append(tf.concat([X_gc1[i], X_gc2[i]], axis=1))
+        elif h == 1:
+            X_gc.append(X_gc1[i])
 
     # X_n = []
     # for i in range(batch_size):
@@ -364,9 +379,11 @@ with tf.Session(graph=tf_graph) as sess:
 
     f.close()
 
+    # with open('results/result_{}_{}_{}_{}_{}_{}.txt'.format(cmd_args.data, batch_size, hidden, h, k, cmd_args.seed), 'a') as f:
     with open('result_{}.txt'.format(cmd_args.seed), 'a') as f:
         f.write("{:.4f}\n".format(test_accu))
-
+    
+    '''
     embeddings_0, labels_0 = get_hidden(train_graphs)
     embeddings_1, labels_1 = get_hidden(test_graphs)
     embeddings = np.concatenate([embeddings_0, embeddings_1], axis=0)
@@ -374,29 +391,32 @@ with tf.Session(graph=tf_graph) as sess:
     print(embeddings.shape)
     np.savetxt('graph_embedding.txt', embeddings, fmt='%.5f')
     np.savetxt('graph_label.txt', label_list, fmt='%d')
+    '''
 
-plt.figure(figsize = (8, 5))
-plt.xticks(fontsize=13)
-plt.yticks(fontsize=13)
+plt.figure(figsize = (8, 6))
+plt.xticks(fontsize=15)
+plt.yticks(fontsize=15)
 plt.plot(logs[:, 0], logs[:, 1], '-', label = 'training loss', color="blue", linewidth = 1)
 plt.plot(logs[:, 0], logs[:, 3], '-', label = 'testing loss', color="green", linewidth = 1)
-plt.xlabel("Epoch", fontsize=16)
-plt.ylabel("Loss", fontsize=16)
+plt.xlabel("Epoch", fontsize=18)
+plt.ylabel("Loss", fontsize=18)
 # plt.title("Loss")
 plt.legend(loc = 1, fontsize=16) 
 plt.grid(color = '#95a5a6', linestyle = '-', linewidth = 1, axis = 'x', alpha = 0.5)
 plt.grid(color = '#95a5a6', linestyle = '-', linewidth = 1, axis = 'y', alpha = 0.5)
 plt.savefig("loss.pdf")
 
-plt.figure(figsize = (8, 5))
-plt.xticks(fontsize=13)
-plt.yticks(fontsize=13)
+plt.figure(figsize = (8, 6))
+plt.xticks(fontsize=15)
+plt.yticks(fontsize=15)
 plt.plot(logs[:, 0], logs[:, 2], '-', label = 'training accuracy', color="blue", linewidth = 1)
 plt.plot(logs[:, 0], logs[:, 4], '-', label = 'testing accuracy', color="green", linewidth = 1)
-plt.xlabel("Epoch", fontsize=16)
-plt.ylabel("Accuracy", fontsize=16)
+plt.xlabel("Epoch", fontsize=18)
+plt.ylabel("Accuracy", fontsize=18)
 # plt.title("Accuracy")
 plt.legend(loc = 1, fontsize=16) 
 plt.grid(color = '#95a5a6', linestyle = '-', linewidth = 1, axis = 'x', alpha = 0.5)
 plt.grid(color = '#95a5a6', linestyle = '-', linewidth = 1, axis = 'y', alpha = 0.5)
 plt.savefig("accuracy.pdf")
+
+

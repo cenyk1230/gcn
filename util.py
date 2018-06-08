@@ -37,6 +37,7 @@ cmd_opt.add_argument('-dim_p', type=int, default=128, help='dim_p')
 cmd_opt.add_argument('-gpu', type=str, default='1', help='gpu number')
 cmd_opt.add_argument('-field_size', type=int, default=5, help='receptive field size')
 cmd_opt.add_argument('-use_deg', type=int, default=0, help='whether to add degree feature')
+cmd_opt.add_argument('-gc_layers', type=int, default=4, help='number of graph convolution layers')
 
 cmd_args, _ = cmd_opt.parse_known_args()
 
