@@ -168,10 +168,10 @@ class S2VGraph(object):
         encoder = OneHotEncoder(cmd_args.feat_dim)
         tags = [[x] for x in self.node_tags]
         tags = encoder.fit_transform(tags).toarray()
-        if not self.node_features:
+        if self.node_features is None:
             self.node_features = tags
         else:
-            self.node_features = np.concatenate([tags, node_features], axis=1)
+            self.node_features = np.concatenate([tags, self.node_features], axis=1)
 
         # if self.num_nodes < k:
         #     delta = k - self.num_nodes
@@ -268,22 +268,40 @@ def load_data():
                 label_dict[l] = mapped
             g = nx.Graph()
             node_tags = []
+            node_features = []
             n_edges = 0
             for j in range(n):
                 g.add_node(j)
                 row = f.readline().strip().split()
-                row = [int(w) for w in row]
+                tmp = int(row[1]) + 2
+                if tmp == len(row):
+                    attr = None
+                    row = [int(w) for w in row]
+                else:
+                    attr = np.array([float(w) for w in row[tmp:]])
+                    row = [int(w) for w in row[:tmp]]
                 if not row[0] in feat_dict:
                     mapped = len(feat_dict)
                     feat_dict[row[0]] = mapped
                 node_tags.append(feat_dict[row[0]])
 
+                if attr is not None:
+                    node_features.append(attr)
+
                 n_edges += row[1]
                 for k in range(2, len(row)):
                     g.add_edge(j, row[k])
+
+            if node_features != []:
+                node_features = np.stack(node_features)
+                node_feature_flag = True
+            else:
+                node_features = None
+                node_feature_flag = False
+
             #assert len(g.edges()) * 2 == n_edges  (some graphs in COLLAB have self-loops, ignored here)
             assert len(g) == n
-            g_list.append(S2VGraph(g, l, node_tags))
+            g_list.append(S2VGraph(g, l, node_tags, node_features))
     for g in g_list:
         g.label = label_dict[g.label]
     cmd_args.num_class = len(label_dict)
@@ -312,6 +330,9 @@ def load_data():
 
     if cmd_args.use_deg == 1:
         cmd_args.feat_dim += max_d + 1
+
+    if node_feature_flag:
+        cmd_args.feat_dim += node_features.shape[1]
 
     train_idxes = np.loadtxt('data/%s/10fold_idx/train_idx-%d.txt' % (cmd_args.data, cmd_args.fold), dtype=np.int32).tolist()
     test_idxes = np.loadtxt('data/%s/10fold_idx/test_idx-%d.txt' % (cmd_args.data, cmd_args.fold), dtype=np.int32).tolist()
