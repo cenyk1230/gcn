@@ -9,6 +9,7 @@ import random
 import math
 import numpy as np
 import tensorflow as tf
+from sklearn.metrics import precision_score, recall_score, f1_score
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -232,8 +233,9 @@ with tf_graph.as_default():
     # for FC in fc_layers:
     #     outputs = FC(outputs)
     
+    pred_out = tf.argmax(outputs, 1)
 
-    pred = tf.equal(tf.argmax(labels, 1), tf.argmax(outputs, 1))
+    pred = tf.equal(tf.argmax(labels, 1), pred_out)
 
     pred = tf.boolean_mask(pred, mask)
 
@@ -315,6 +317,32 @@ def get_hidden(graphs):
 
     return (embeddings, label_list)
 
+def get_pred(graphs):
+    preds = []
+    label_list = []
+    batches = get_batches(graphs, batch_size)
+    for x, y, s, m in batches:
+        tmp_label = np.zeros((len(y), num_class), dtype=np.int32)
+        for i in range(len(y)):
+            tmp_label[i, y[i]] = 1
+
+        feed = {labels: tmp_label}
+        feed.update({adjs[i]: s[i] for i in range(len(s))})
+        feed.update({features[i]: x[i] for i in range(len(x))})
+        feed.update({mask: m})
+        feed.update({tf.keras.backend.learning_phase(): 0})
+
+        batch_pred = sess.run([pred_out], feed_dict = feed)
+
+        preds.append(np.array(batch_pred[0])[m])
+        label_list.append(np.array(y)[m])
+    
+    preds = np.concatenate(preds, axis=0)
+    label_list = np.concatenate(label_list, axis=0)
+
+    return (preds, label_list)
+
+
 epochs = cmd_args.num_epochs
 
 with tf.Session(graph=tf_graph) as sess:
@@ -392,6 +420,12 @@ with tf.Session(graph=tf_graph) as sess:
     np.savetxt('graph_embedding.txt', embeddings, fmt='%.5f')
     np.savetxt('graph_label.txt', label_list, fmt='%d')
     '''
+
+    y_pred, y_true = get_pred(test_graphs)
+    print('Precison: {:.4f}'.format(precision_score(y_true, y_pred, average='macro')))
+    print('Recall: {:.4f}'.format(recall_score(y_true, y_pred, average='macro')))
+    print('F1-score: {:.4f}'.format(f1_score(y_true, y_pred, average='macro')))
+
 
 plt.figure(figsize = (8, 6))
 plt.xticks(fontsize=15)
